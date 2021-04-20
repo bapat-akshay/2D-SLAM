@@ -43,7 +43,7 @@ class Map:
 
 	def display(self):
 		cv.imshow("SLAM Environment", self.map)
-		cv.waitKey(10)
+		cv.waitKey(0)
 
 
 def createMap(length, height, thickness):

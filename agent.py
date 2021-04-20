@@ -36,7 +36,7 @@ class Agent:
 
 		# Sensor parameters
 		self.fov = 2*math.pi/3
-		self.stddev = 1
+		self.stddev = 0
 		self.range = 300
 		self.angularRes = 0.01
 		self.linearRes = 0.1
@@ -110,8 +110,8 @@ class Agent:
 				c = self.col + int(x*math.cos(theta))
 
 				# Coordinates from the pov of the agent
-				cobs = (self.range - int(x*math.sin(theta - self.heading)))
-				robs = 300 - int(x*math.cos(theta - self.heading))
+				cobs = (self.range - (x*math.sin(theta - self.heading)))
+				robs = 300 - (x*math.cos(theta - self.heading))
 				x += self.linearRes
 
 				if r < 0 or c < 0 or r >= self.room.height or c >= self.room.length:
@@ -128,7 +128,7 @@ class Agent:
 					# self.PC.append([r, c])
 					# self.PCmap[r][c] = 255
 					# self.room.map[r][c][:] = (0,0,255)
-					currPC.append([robs, cobs])
+					currPC.append([gauss(robs, self.stddev), gauss(cobs, self.stddev)])
 				else:
 					break
 
@@ -143,16 +143,22 @@ class Agent:
 		mat[0][0] = gauss(math.cos(self.heading - self.prevheading), self.stddev)
 		mat[0][1] = gauss(math.sin(self.heading - self.prevheading), self.stddev)
 		mat[1][1] = gauss(math.cos(self.heading - self.prevheading), self.stddev)
-		mat[1][0] = gauss(-math.sin(self.heading - self.prevheading), self.stddev)
+		mat[1][0] = -gauss(math.sin(self.heading - self.prevheading), self.stddev)
+
+		# mat[0][0] = -gauss(math.sin(self.heading - self.prevheading), self.stddev)
+		# mat[0][1] = -gauss(math.cos(self.heading - self.prevheading), self.stddev)
+		# mat[1][0] = gauss(math.cos(self.heading - self.prevheading), self.stddev)
+		# mat[1][1] = -gauss(math.sin(self.heading - self.prevheading), self.stddev)
 
 		mat[2][2] = 1
-		mat[1][2] = gauss(self.col - self.prevcol, self.stddev)
-		mat[0][2] = gauss(self.row - self.prevrow, self.stddev)
+		mat[1][2] = -gauss(self.col - self.prevcol, self.stddev)
+		mat[0][2] = -gauss(self.row - self.prevrow, self.stddev)
 
 		heading = gauss(self.heading - self.prevheading, self.stddev)
-		self.tfMat = mat
+		self.tfMat = np.dot(self.tfMat, mat)
+		#print(self.tfMat)
 
-		return mat[0][2], mat[1][2], heading, mat
+		return self.tfMat[0][2], self.tfMat[1][2], heading, self.tfMat
 
 
 	def saveObservations(self):
@@ -193,24 +199,72 @@ def main():
 	sensor.refresh()
 	#room.display()
 
+	'''
+	TESTING TRANSFORMATIONS
+	'''
+	observations = pickle.load(open("agentObs.p", "rb"))
+
 	for i, p in enumerate(sensor.explore()):
+		img = np.zeros((2000,2000), np.uint8)
+		original = np.zeros((1000,1000), np.uint8)
+		#print(str(sensor.row) + " " + str(sensor.col))
+		#	(p)
 		sensor.moveToLoc(p[0], p[1], p[2])
 		sensor.refresh()
-		sensor.grabPC()
 		room.display()
+		
+		if i == 0:
+			tfMat = np.eye(3)
+		else:
+			_, _, _, tfMat = sensor.deadReckon()
+		print(tfMat)
+		print(sensor.tfMat)
+		tfMat = np.linalg.inv(tfMat)
+		#print(np.dot(tfMat, sensor.deadReckon()[3]))
 
-		obs = np.zeros((600, 600), dtype=np.uint8)
-		for point in sensor.observations[i]:
-			print(point)
-			obs[point[0], point[1]] = 255
-		cv.imshow("Agent observation", obs)
-		cv.waitKey(1000)
+		for point in observations[i+1]:
+			tfpoint = np.dot(tfMat, np.array([point[0], point[1], 1]).T)
+			tfpoint /= tfpoint[2]
+			# print(tfMat)
+			# print(point)
+			# print(tfpoint)
+			img[500 + round(tfpoint[0]), 500 + round(tfpoint[1])] = 255
+			original[round(point[0]), round(point[1])] = 255
 
-		sensor.tfMat = np.dot(sensor.tfMat, sensor.deadReckon()[3])
-		Restimate = sensor.deadReckon()[0]
-		Cestimate = sensor.deadReckon()[1]
+		cv.imshow("tf", img)
+		cv.imshow("og", original)
+		cv.waitKey(0)
 
+	'''
+	img = np.zeros((1000,1000), np.uint8)
+	original = np.zeros((1000,1000), np.uint8)
+	sensor.moveToLoc(200, 400, math.pi/2)
+	sensor.refresh()
+	room.display()
+	_,_,_,tfMat = sensor.deadReckon()
+	print(tfMat)
+	tfMat = np.linalg.inv(tfMat)
+	print(tfMat)
+	print(np.dot(tfMat, np.array([-10,10,1])))
+	'''
 
+	# for i, p in enumerate(sensor.explore()):
+	# 	sensor.moveToLoc(p[0], p[1], p[2])
+	# 	sensor.refresh()
+	# 	sensor.grabPC()
+	# 	room.display()
+
+	# 	# obs = np.zeros((600, 600), dtype=np.uint8)
+	# 	# for point in sensor.observations[i]:
+	# 	# 	obs[point[0], point[1]] = 255
+	# 	# cv.imshow("Agent observation", obs)
+	# 	# cv.waitKey(1000)
+
+	# 	sensor.tfMat = np.dot(sensor.tfMat, sensor.deadReckon()[3])
+	# 	Restimate = sensor.deadReckon()[0]
+	# 	Cestimate = sensor.deadReckon()[1]
+
+	# pickle.dump(sensor.observations, open("agentObs.p", "wb"))
 
 if __name__ == "__main__":
 	main()

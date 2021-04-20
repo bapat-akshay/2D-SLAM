@@ -16,6 +16,7 @@ class SLAMAlg:
 		if direction == "rowup":
 			new = np.zeros((numR*2, numC), np.uint8)
 			new[numR:, :] = self.map_
+			self.agent.tfMat[0,2] += self.map_.shape[0]
 			self.map_ = new
 
 		elif direction == "rowdown":
@@ -31,6 +32,7 @@ class SLAMAlg:
 		elif direction == "colleft":
 			new = np.zeros((numR, numC*2), np.uint8)
 			new[:, :numC] = self.map_
+			self.tfMat[1,2] += self.map_.shape[1]
 			self.map_ = new
 
 
