@@ -11,23 +11,18 @@ def dist(p1x, p1y, p2x, p2y):
 
 
 class Agent:
-	def __init__(self, room):
+	def __init__(self, room, spawnR=270, spawnC=680, spawnH=math.pi/2):
 		self.room = room
 
 		# Current pose
-		self.row = 2*self.room.height//4
-		self.col = 2*self.room.length//4
-		self.heading = math.pi						# Radians
+		self.row = spawnR
+		self.col = spawnC
+		self.heading = spawnH					# Radians
 
 		# Previous pose
 		self.prevrow = self.row
 		self.prevcol = self.col
 		self.prevheading = self.heading
-
-		# Spawn coordinates
-		self.spawnR = 2*self.room.height//4
-		self.spawnC = 2*self.room.length//4
-		self.spawnheading = math.pi
 
 		# Agent appearance parameters
 		self.theta = 20*math.pi/180
@@ -37,7 +32,7 @@ class Agent:
 		# Sensor parameters
 		self.fov = 2*math.pi/3
 		self.stddev = 0
-		self.range = 300
+		self.range = 500
 		self.angularRes = 0.01
 		self.linearRes = 0.1
 
@@ -46,6 +41,8 @@ class Agent:
 		self.PCmap = np.zeros((self.room.height, self.room.length), dtype=np.uint8)
 
 		self.tfMat = np.eye(3)
+		self.rotMat = np.eye(2)
+		self.transVec = np.array([0, 0])
 
 
 	def refresh(self):
@@ -91,6 +88,16 @@ class Agent:
 			points.append([center[0] - int(radius*math.sin(angle)), center[1] + int(radius*math.cos(angle)), angle + math.pi/2])
 			angle += self.angularRes*5
 
+		return points
+
+
+	def explore2(self):
+		start = [100, 800, math.pi]
+		points = []
+		end = 400
+		while start[1] >= end:
+			points.append(start.copy())
+			start[1] -= 10
 
 		return points
 
@@ -105,13 +112,13 @@ class Agent:
 			x = 0
 
 			# Traverse scanner "ray" till either a wall is encountered or out of range
-			while (not np.array_equal(self.room.map[r][c], (255,255,255))) and (dist(r, c, self.row, self.col) < self.range):
-				r = self.row - int(x*math.sin(theta))
-				c = self.col + int(x*math.cos(theta))
+			while (not np.array_equal(self.room.map[round(r)][round(c)], (255,255,255))) and (dist(r, c, self.row, self.col) < self.range):
+				r = self.row - (x*math.sin(theta))
+				c = self.col + (x*math.cos(theta))
 
 				# Coordinates from the pov of the agent
-				cobs = (self.range - (x*math.sin(theta - self.heading)))
-				robs = 300 - (x*math.cos(theta - self.heading))
+				robs = -(x*math.cos(theta - self.heading))
+				cobs = -(x*math.sin(theta - self.heading))
 				x += self.linearRes
 
 				if r < 0 or c < 0 or r >= self.room.height or c >= self.room.length:
@@ -121,13 +128,11 @@ class Agent:
 				break
 
 			# Add Gaussian noise to sensor perception
-			if np.array_equal(self.room.map[r][c], (255,255,255)):
-				r = int(gauss(r, self.stddev))
-				c = int(gauss(c, self.stddev))
+			if np.array_equal(self.room.map[round(r)][round(c)], (255,255,255)):
+				r = (gauss(r, self.stddev))
+				c = (gauss(c, self.stddev))
+
 				if r >= 0 and c >= 0 and r < self.room.height and c < self.room.length:
-					# self.PC.append([r, c])
-					# self.PCmap[r][c] = 255
-					# self.room.map[r][c][:] = (0,0,255)
 					currPC.append([gauss(robs, self.stddev), gauss(cobs, self.stddev)])
 				else:
 					break
@@ -139,132 +144,39 @@ class Agent:
 
 	# Returns (noisy) estimate of change in R, C, H and estimated geometric transformation matrix associated with the motion
 	def deadReckon(self):
-		mat = np.zeros((3,3))
-		mat[0][0] = gauss(math.cos(self.heading - self.prevheading), self.stddev)
-		mat[0][1] = gauss(math.sin(self.heading - self.prevheading), self.stddev)
-		mat[1][1] = gauss(math.cos(self.heading - self.prevheading), self.stddev)
-		mat[1][0] = -gauss(math.sin(self.heading - self.prevheading), self.stddev)
-
-		# mat[0][0] = -gauss(math.sin(self.heading - self.prevheading), self.stddev)
-		# mat[0][1] = -gauss(math.cos(self.heading - self.prevheading), self.stddev)
-		# mat[1][0] = gauss(math.cos(self.heading - self.prevheading), self.stddev)
-		# mat[1][1] = -gauss(math.sin(self.heading - self.prevheading), self.stddev)
-
-		mat[2][2] = 1
-		mat[1][2] = -gauss(self.col - self.prevcol, self.stddev)
-		mat[0][2] = -gauss(self.row - self.prevrow, self.stddev)
-
+		
+		currTF = np.zeros((3,3))
 		heading = gauss(self.heading - self.prevheading, self.stddev)
-		self.tfMat = np.dot(self.tfMat, mat)
-		#print(self.tfMat)
 
-		return self.tfMat[0][2], self.tfMat[1][2], heading, self.tfMat
+		# Translation vector in absolute coordinates
+		t = np.array([gauss(self.row, self.stddev), gauss(self.col, self.stddev), 1])
+
+		# Translation vector in coordinates wrt frame i-1
+		t = np.linalg.inv(self.tfMat) @ t.T
+
+		currTF[0][0] = math.cos(heading)
+		currTF[0][1] = -math.sin(heading)
+		currTF[1][1] = math.cos(heading)
+		currTF[1][0] = math.sin(heading)
+		currTF[0][2] = t[0]
+		currTF[1][2] = t[1]
+		currTF[2][2] = 1
+
+		self.tfMat = self.tfMat @ currTF
 
 
-	def saveObservations(self):
-		pickle.dump(self.observations, open("agentObs.p", "wb"))
+	def saveObservations(self, string=""):
+		pickle.dump(self.observations, open("agentObs" + string + ".p", "wb"))
 
 
-	def loadObservations(self):
-		return pickle.load(open("agentObs.p", "rb"))
-
+	def loadObservations(self, string=""):
+		return pickle.load(open("agentObs" + string + ".p", "rb"))
 
 
 
 def main():
-	# temp = np.zeros((500,500,3), dtype=np.uint8)
-	# temp = cv.circle(temp, (250,250), 2, (0,0,255), -1)
-	# count = 0
-	# while count < 20:
-	# 	x = int(gauss(250, 2))
-	# 	y = int(gauss(250, 2))
-	# 	temp = cv.circle(temp, (x,y), 1, (255,255,255), -1)
-	# 	count += 1
-	# cv.imshow("test", temp)
-	# cv.waitKey(0)
+	pass
 
-
-
-	length = 960
-	height = 9*length//16
-	thickness = 5
-	room = slam_env.createMap(length, height, thickness)
-	room.addBox(200, 400, 140, 160)
-	room.addCircle(100, 100, 50)
-	room.addCircle(100, 200, 40)
-	room.addCircle(200, 100, 30)
-	room.addCircle(500, 50, 40)
-	room.addBox(400, 900, 140, 60)
-	sensor = Agent(room)
-	sensor.refresh()
-	#room.display()
-
-	'''
-	TESTING TRANSFORMATIONS
-	'''
-	observations = pickle.load(open("agentObs.p", "rb"))
-
-	for i, p in enumerate(sensor.explore()):
-		img = np.zeros((2000,2000), np.uint8)
-		original = np.zeros((1000,1000), np.uint8)
-		#print(str(sensor.row) + " " + str(sensor.col))
-		#	(p)
-		sensor.moveToLoc(p[0], p[1], p[2])
-		sensor.refresh()
-		room.display()
-		
-		if i == 0:
-			tfMat = np.eye(3)
-		else:
-			_, _, _, tfMat = sensor.deadReckon()
-		print(tfMat)
-		print(sensor.tfMat)
-		tfMat = np.linalg.inv(tfMat)
-		#print(np.dot(tfMat, sensor.deadReckon()[3]))
-
-		for point in observations[i+1]:
-			tfpoint = np.dot(tfMat, np.array([point[0], point[1], 1]).T)
-			tfpoint /= tfpoint[2]
-			# print(tfMat)
-			# print(point)
-			# print(tfpoint)
-			img[500 + round(tfpoint[0]), 500 + round(tfpoint[1])] = 255
-			original[round(point[0]), round(point[1])] = 255
-
-		cv.imshow("tf", img)
-		cv.imshow("og", original)
-		cv.waitKey(0)
-
-	'''
-	img = np.zeros((1000,1000), np.uint8)
-	original = np.zeros((1000,1000), np.uint8)
-	sensor.moveToLoc(200, 400, math.pi/2)
-	sensor.refresh()
-	room.display()
-	_,_,_,tfMat = sensor.deadReckon()
-	print(tfMat)
-	tfMat = np.linalg.inv(tfMat)
-	print(tfMat)
-	print(np.dot(tfMat, np.array([-10,10,1])))
-	'''
-
-	# for i, p in enumerate(sensor.explore()):
-	# 	sensor.moveToLoc(p[0], p[1], p[2])
-	# 	sensor.refresh()
-	# 	sensor.grabPC()
-	# 	room.display()
-
-	# 	# obs = np.zeros((600, 600), dtype=np.uint8)
-	# 	# for point in sensor.observations[i]:
-	# 	# 	obs[point[0], point[1]] = 255
-	# 	# cv.imshow("Agent observation", obs)
-	# 	# cv.waitKey(1000)
-
-	# 	sensor.tfMat = np.dot(sensor.tfMat, sensor.deadReckon()[3])
-	# 	Restimate = sensor.deadReckon()[0]
-	# 	Cestimate = sensor.deadReckon()[1]
-
-	# pickle.dump(sensor.observations, open("agentObs.p", "wb"))
 
 if __name__ == "__main__":
 	main()

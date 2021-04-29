@@ -2,13 +2,14 @@ import numpy as np
 import cv2 as cv
 import math
 import pickle
+import matplotlib.pyplot as plt
 
 
 class SLAMAlg:
 	def __init__(self, room, agent):
 		self.room = room
 		self.agent = agent
-		self.map_ = np.zeros((self.agent.range, self.agent.range), np.uint8)
+		self.map_ = np.zeros((2*self.agent.range, 2*self.agent.range), np.uint8)
 
 	def expandMap(self, direction):
 		numR = self.map_.shape[0]
@@ -32,7 +33,7 @@ class SLAMAlg:
 		elif direction == "colleft":
 			new = np.zeros((numR, numC*2), np.uint8)
 			new[:, :numC] = self.map_
-			self.tfMat[1,2] += self.map_.shape[1]
+			self.agent.tfMat[1,2] += self.map_.shape[1]
 			self.map_ = new
 
 
@@ -59,14 +60,17 @@ class SLAMAlg:
 		return (limitExceeded, direction)
 
 
-	def stitchMap(self, newObs):
+	# Transform points from newObs and stitch together to form a map of the perceived environment
+	def stitchMap(self, tfMat, newObs):
+
 		for point in newObs:
-			point_tf = np.dot(self.agent.tfMat, np.array([point[0], point[1], 1]).T)
-			point.tf /= point.tf[2]
+			point_tf = tfMat @ np.array([point[0], point[1], 1]).T
+			point_tf[0] += 500
+			point_tf[1] += 500
 
 			ret = self.checkMapLimits(point_tf[0], point_tf[1])
 			if ret[0]:
 				self.expandMap(ret[1])
 
-			self.map_[point_tf[0], point_tf[1]] = 255
+			self.map_[round(point_tf[0]), round(point_tf[1])] = 255
 
