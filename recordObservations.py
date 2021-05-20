@@ -22,7 +22,7 @@ def main():
 
 	robot = agent.Agent(room)
 
-	for i, p in enumerate(tqdm(robot.explore2())):
+	for i, p in enumerate(tqdm(robot.explore())):
 		robot.moveToLoc(p[0], p[1], p[2])
 		robot.refresh()
 		robot.grabPC()
@@ -38,7 +38,7 @@ def main():
 		# Restimate = robot.deadReckon()[0]
 		# Cestimate = robot.deadReckon()[1]
 
-	robot.saveObservations("4")
+	robot.saveObservations("2")
 
 
 if __name__ == "__main__":

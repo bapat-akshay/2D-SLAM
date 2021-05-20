@@ -14,6 +14,11 @@ class Agent:
 	def __init__(self, room, spawnR=270, spawnC=680, spawnH=math.pi/2):
 		self.room = room
 
+		# Spawn pose
+		self.spawnR = spawnR
+		self.spawnC = spawnC
+		self.spawnH = spawnH
+
 		# Current pose
 		self.row = spawnR
 		self.col = spawnC
@@ -31,7 +36,8 @@ class Agent:
 
 		# Sensor parameters
 		self.fov = 2*math.pi/3
-		self.stddev = 0
+		self.stddev = 0.01
+		self.covarMat = self.stddev**2 * np.eye(3)
 		self.range = 500
 		self.angularRes = 0.01
 		self.linearRes = 0.1
@@ -43,6 +49,11 @@ class Agent:
 		self.tfMat = np.eye(3)
 		self.rotMat = np.eye(2)
 		self.transVec = np.array([0, 0])
+
+
+	def reset(self):
+		print("Resetting robot")
+		self.__init__(self.room, self.spawnR, self.spawnC, self.spawnH)
 
 
 	def refresh(self):
@@ -143,26 +154,33 @@ class Agent:
 
 
 	# Returns (noisy) estimate of change in R, C, H and estimated geometric transformation matrix associated with the motion
-	def deadReckon(self):
+	def deadReckon(self, trueDeadReckon=False):
 		
+		if trueDeadReckon:
+			sd = 0
+		else:
+			sd = self.stddev
+
 		currTF = np.zeros((3,3))
-		heading = gauss(self.heading - self.prevheading, self.stddev)
+		heading = gauss(self.heading - self.prevheading, sd)
 
 		# Translation vector in absolute coordinates
-		t = np.array([gauss(self.row, self.stddev), gauss(self.col, self.stddev), 1])
+		t = np.array([gauss(self.row, sd), gauss(self.col, sd), 1])
 
 		# Translation vector in coordinates wrt frame i-1
-		t = np.linalg.inv(self.tfMat) @ t.T
+		t2 = np.linalg.inv(self.tfMat) @ t.T
 
 		currTF[0][0] = math.cos(heading)
 		currTF[0][1] = -math.sin(heading)
 		currTF[1][1] = math.cos(heading)
 		currTF[1][0] = math.sin(heading)
-		currTF[0][2] = t[0]
-		currTF[1][2] = t[1]
+		currTF[0][2] = t2[0]
+		currTF[1][2] = t2[1]
 		currTF[2][2] = 1
 
 		self.tfMat = self.tfMat @ currTF
+
+		return currTF, np.array([self.row, self.col, self.heading]), np.array([t[0], t[1], heading + self.prevheading])
 
 
 	def saveObservations(self, string=""):
