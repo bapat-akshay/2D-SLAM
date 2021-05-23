@@ -11,6 +11,11 @@ This images illustrates the room which the robot explores. Everything in white r
 ![SLAM Without Pose Graph Optimization](https://user-images.githubusercontent.com/47930459/119280336-f6b3d500-bbfe-11eb-9cbb-31e903d8b8cb.jpg)
 Without pose graph optimization, faulty odometry results in incorrect SLAM.
 
+
+
+
+
+
 ![SLAM With Pose Graph Optimization](https://user-images.githubusercontent.com/47930459/119280357-092e0e80-bbff-11eb-946f-888204d67bf6.jpg)
 Using pose graph optimization, the algorithm corrects all previous observations as soon as it detects that it has reached a location it has already visited before, resulting in a much more accurate SLAM solution.
 
