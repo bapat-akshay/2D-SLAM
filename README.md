@@ -1,3 +1,4 @@
+![Room](https://user-images.githubusercontent.com/47930459/119280152-067ee980-bbfe-11eb-88f2-f6e995ddd6ab.jpg)
 # 2D-SLAM: Algorithm for a Simulated Two-Dimensional World
 
 ## Simulation
