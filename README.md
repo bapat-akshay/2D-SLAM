@@ -1,9 +1,15 @@
-# 2D-SLAM
-SLAM algorithm for a two-dimensional world
+# 2D-SLAM: Algorithm for a Simulated Two-Dimensional World
+
+## Simulation
+The simulated environment consists of a room with certain features (circular and rectangular objects). A robot explores this room and gathers observations in the form of simulated point clouds. The robot's perception and odometry are erroneous, and this algorithm uses pose graph optimization to minimize the effects of the error in odometry.
+
+
+
+
+
 
 .p files:
 
 - "1" for zero noise observation, circular motion
 - "2" for standard deviation of 2, circular motion
-- "3" for standard deviation of _, circular motion
 - "4" for zero noise observation, linear motion
