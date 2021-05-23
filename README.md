@@ -3,7 +3,7 @@
 ## Simulation
 The simulated environment consists of a room with certain features (circular and rectangular objects). A robot explores this room and gathers observations in the form of simulated point clouds. The robot's perception and odometry are erroneous, and this algorithm uses pose graph optimization to minimize the effects of the error in odometry.
 
-
+![alt text](https://github.com/bapat-akshay/2D-SLAM/edit/main/Room.PNG)
 
 
 
