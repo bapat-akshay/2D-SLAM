@@ -5,6 +5,7 @@
 The simulated environment consists of a room with certain features (circular and rectangular objects). A robot explores this room and gathers observations in the form of simulated point clouds. The robot's perception and odometry are erroneous, and this algorithm uses pose graph optimization to minimize the effects of the error in odometry.
 
 ![Simulation Environment](https://user-images.githubusercontent.com/47930459/119280152-067ee980-bbfe-11eb-88f2-f6e995ddd6ab.jpg)
+
 This images illustrates the room which the robot explores. Everything in white represents features of the room, while the robot is the V-shaped light blue colored object.
 
 ## Pose Graph Optimization
