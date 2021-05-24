@@ -21,7 +21,7 @@ Without pose graph optimization, faulty odometry results in incorrect SLAM.
 Using pose graph optimization, the algorithm corrects all previous observations as soon as it detects that it has reached a location it has already visited before, resulting in a much more accurate SLAM solution.
 
 ## Running the Algorithm
-- main.py is the primary file to be run
+- main.py is the primary file to run
 - Changing the robot perception parameters (e.g. sensor standard deviation, range, field of view, etc.) will require saving the observations to a .p file, since simulated observations are recorded by tracing each sensor ray, which is a computationally expensive task and cannot be done in real-time. This may be done using recordObservations.py
 - This recorded file may be referenced in main.py
 
