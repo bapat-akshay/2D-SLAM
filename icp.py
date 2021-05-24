@@ -1,4 +1,6 @@
 '''
+Copyright 2016 Clay Flannigan
+
 Reference: https://github.com/ClayFlannigan/icp/blob/master/icp.py
 Apache License 2.0
 
