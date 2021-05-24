@@ -20,6 +20,11 @@ Without pose graph optimization, faulty odometry results in incorrect SLAM.
 ![SLAM With Pose Graph Optimization](https://user-images.githubusercontent.com/47930459/119280357-092e0e80-bbff-11eb-946f-888204d67bf6.jpg)
 Using pose graph optimization, the algorithm corrects all previous observations as soon as it detects that it has reached a location it has already visited before, resulting in a much more accurate SLAM solution.
 
+## Running the Algorithm
+- main.py is the primary file to be run
+- Changing the robot perception parameters (e.g. sensor standard deviation, range, field of view, etc.) will require saving the observations to a .p file, since simulated observations are recorded by tracing each sensor ray, which is a computationally expensive task and cannot be done in real-time. This may be done using recordObservations.py
+- This recorded file may be referenced in main.py
+
 ## Scholarly References:
 - "A Tutorial on Graph-Based SLAM", Giorgio Grisetti, Rainer Kummerle, Cyrill Stachniss, and Wolfram Burgard, _Department of Computer Science, University of Freiburg_
 - "Fast Iterative Alignment of Pose Graphs with Poor Initial Estimates", Edwin Olson, John Leonard, and Seth Teller, _International Conference on Robotics and Automation (ICRA), pp. 2262-2269, May 2006_
